@@ -146,3 +146,4 @@ if __name__ == "__main__":
         print("\nProgram stopped")
     except Exception as e:
         print(f"Error: {e}")
+##Facial Expression Detection System - Real-time emotion recognition from webcam using cascade classifiers

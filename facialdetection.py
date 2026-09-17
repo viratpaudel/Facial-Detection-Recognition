@@ -50,6 +50,12 @@ class FacialExpressionAnalyzer:
             confidence = 0.75
             return "Surprise", confidence
         
+        # A very narrow eye aspect ratio with no detected smile is used as
+        # a lightweight heuristic for anger with the available Haar cascades.
+        elif eyes >= 2 and smiles == 0 and eye_aspect < 1.0:
+            confidence = 0.6
+            return "Angry", confidence
+        
         elif eyes >= 2 and smiles == 0 and eye_aspect < 1.2:
             confidence = 0.65
             return "Sad", confidence
@@ -68,6 +74,7 @@ class FacialExpressionAnalyzer:
         colors = {
             "Happy": (0, 255, 0),
             "Sad": (255, 0, 0),
+            "Angry": (0, 0, 255),
             "Surprise": (0, 255, 255),
             "Neutral": (200, 200, 200),
             "Unknown": (0, 0, 255)

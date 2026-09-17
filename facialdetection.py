@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -121,6 +122,8 @@ def main():
     print(f"Screenshots will be saved in: {SCREENSHOT_DIR.resolve()}")
     
     frame_count = 0
+    fps = 0.0
+    previous_time = time.perf_counter()
     
     while True:
         ret, frame = cap.read()
@@ -141,9 +144,19 @@ def main():
             emotion, confidence, eyes, smiles = analyzer.analyze_face(face_roi)
             analyzer.draw_face_analysis(frame, face, emotion, confidence, eyes, smiles)
         
+        current_time = time.perf_counter()
+        elapsed = current_time - previous_time
+        if elapsed > 0:
+            current_fps = 1.0 / elapsed
+            # Smooth short-term FPS fluctuations for a more readable display.
+            fps = current_fps if fps == 0 else (0.9 * fps + 0.1 * current_fps)
+        previous_time = current_time
+        
         cv2.putText(frame, f"Faces: {len(faces)} | Frame: {frame_count}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-        cv2.putText(frame, "S: Screenshot | Q: Quit", (10, 55),
+        cv2.putText(frame, f"FPS: {fps:.1f}", (10, 55),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        cv2.putText(frame, "S: Screenshot | Q: Quit", (10, 80),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
         
         cv2.imshow('Facial Expression Detector', frame)

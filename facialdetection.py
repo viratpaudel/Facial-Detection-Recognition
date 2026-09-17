@@ -1,9 +1,12 @@
 import cv2
 import numpy as np
+from datetime import datetime
+from pathlib import Path
 
 FACE_CASCADE = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 EYE_CASCADE = cv2.data.haarcascades + 'haarcascade_eye.xml'
 SMILE_CASCADE = cv2.data.haarcascades + 'haarcascade_smile.xml'
+SCREENSHOT_DIR = Path('screenshots')
 
 
 class FacialExpressionAnalyzer:
@@ -74,8 +77,9 @@ class FacialExpressionAnalyzer:
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 3)
         
         text = f"{emotion} ({confidence:.1%})"
-        cv2.rectangle(frame, (x, y - 35), (x + 300, y), color, -1)
-        cv2.putText(frame, text, (x + 5, y - 10),
+        label_top = max(0, y - 35)
+        cv2.rectangle(frame, (x, label_top), (x + 300, y), color, -1)
+        cv2.putText(frame, text, (x + 5, max(20, y - 10)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         
         for (ex, ey, ew, eh) in eyes[:2]:
@@ -87,9 +91,20 @@ class FacialExpressionAnalyzer:
                          (x + sx + sw, y + sy + sh), (0, 255, 0), 2)
 
 
+def save_screenshot(frame):
+    """Save the current annotated frame and return its path."""
+    SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
+    screenshot_path = SCREENSHOT_DIR / f'facial_detection_{timestamp}.jpg'
+
+    if cv2.imwrite(str(screenshot_path), frame):
+        return screenshot_path
+    return None
+
+
 def main():
     print("\nStarting facial expression detection...")
-    print("Press 'q' to quit\n")
+    print("Press 's' to save a screenshot, or 'q' to quit\n")
     
     analyzer = FacialExpressionAnalyzer()
     cap = cv2.VideoCapture(0)
@@ -103,6 +118,7 @@ def main():
     cap.set(cv2.CAP_PROP_FPS, 30)
     
     print("Camera opened successfully!")
+    print(f"Screenshots will be saved in: {SCREENSHOT_DIR.resolve()}")
     
     frame_count = 0
     
@@ -127,11 +143,19 @@ def main():
         
         cv2.putText(frame, f"Faces: {len(faces)} | Frame: {frame_count}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        cv2.putText(frame, "S: Screenshot | Q: Quit", (10, 55),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
         
         cv2.imshow('Facial Expression Detector', frame)
         
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
+        if key == ord('s'):
+            screenshot_path = save_screenshot(frame)
+            if screenshot_path:
+                print(f"Screenshot saved: {screenshot_path}")
+            else:
+                print("Error: Could not save screenshot")
+        elif key == ord('q'):
             break
     
     cap.release()
@@ -146,4 +170,5 @@ if __name__ == "__main__":
         print("\nProgram stopped")
     except Exception as e:
         print(f"Error: {e}")
-##Facial Expression Detection System - Real-time emotion recognition from webcam using cascade classifiers
+
+# Facial Expression Detection System - Real-time emotion recognition from webcam using cascade classifiers

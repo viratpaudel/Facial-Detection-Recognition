@@ -3,6 +3,7 @@ import numpy as np
 import time
 from datetime import datetime
 from pathlib import Path
+from collections import Counter, deque
 
 FACE_CASCADE = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 EYE_CASCADE = cv2.data.haarcascades + 'haarcascade_eye.xml'
@@ -16,6 +17,7 @@ class FacialExpressionAnalyzer:
         self.face_cascade = cv2.CascadeClassifier(FACE_CASCADE)
         self.eye_cascade = cv2.CascadeClassifier(EYE_CASCADE)
         self.smile_cascade = cv2.CascadeClassifier(SMILE_CASCADE)
+        self.emotion_history = deque(maxlen=12)
     
     def analyze_face(self, face_image):
         eyes = self.eye_cascade.detectMultiScale(face_image, 1.1, 4)
@@ -40,6 +42,19 @@ class FacialExpressionAnalyzer:
             ratios.append(aspect_ratio)
         
         return np.mean(ratios) if ratios else 0
+
+    def record_emotion(self, emotion):
+        if emotion:
+            self.emotion_history.append(emotion)
+
+    def reset_emotion_history(self):
+        self.emotion_history.clear()
+
+    def get_dominant_emotion(self):
+        if not self.emotion_history:
+            return "Unknown"
+        counts = Counter(self.emotion_history)
+        return counts.most_common(1)[0][0]
     
     def classify_emotion(self, eyes, smiles, eye_aspect):
         if eyes >= 2 and smiles >= 1:
@@ -112,7 +127,7 @@ def save_screenshot(frame):
 
 def main():
     print("\nStarting facial expression detection...")
-    print("Press 's' to save a screenshot, or 'q' to quit\n")
+    print("Press 's' to save a screenshot, 'r' to reset emotion tracking, or 'q' to quit\n")
     
     analyzer = FacialExpressionAnalyzer()
     cap = cv2.VideoCapture(0)
@@ -144,26 +159,36 @@ def main():
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = analyzer.face_cascade.detectMultiScale(gray, 1.3, 5)
         
-        for face in faces:
-            x, y, w, h = face
-            face_roi = gray[y:y+h, x:x+w]
+        if faces:
+            detected_emotions = []
+            for face in faces:
+                x, y, w, h = face
+                face_roi = gray[y:y+h, x:x+w]
+                
+                emotion, confidence, eyes, smiles = analyzer.analyze_face(face_roi)
+                detected_emotions.append(emotion)
+                analyzer.draw_face_analysis(frame, face, emotion, confidence, eyes, smiles)
             
-            emotion, confidence, eyes, smiles = analyzer.analyze_face(face_roi)
-            analyzer.draw_face_analysis(frame, face, emotion, confidence, eyes, smiles)
-        
+            for emotion in detected_emotions:
+                analyzer.record_emotion(emotion)
+        else:
+            analyzer.record_emotion("Unknown")
+
         current_time = time.perf_counter()
         elapsed = current_time - previous_time
         if elapsed > 0:
             current_fps = 1.0 / elapsed
-            # Smooth short-term FPS fluctuations for a more readable display.
             fps = current_fps if fps == 0 else (0.9 * fps + 0.1 * current_fps)
         previous_time = current_time
         
+        dominant_emotion = analyzer.get_dominant_emotion()
         cv2.putText(frame, f"Faces: {len(faces)} | Frame: {frame_count}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
         cv2.putText(frame, f"FPS: {fps:.1f}", (10, 55),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        cv2.putText(frame, "S: Screenshot | Q: Quit", (10, 80),
+        cv2.putText(frame, f"Mood: {dominant_emotion}", (10, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        cv2.putText(frame, "S: Screenshot | R: Reset Mood | Q: Quit", (10, 105),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
         
         cv2.imshow('Facial Expression Detector', frame)
@@ -175,6 +200,9 @@ def main():
                 print(f"Screenshot saved: {screenshot_path}")
             else:
                 print("Error: Could not save screenshot")
+        elif key == ord('r'):
+            analyzer.reset_emotion_history()
+            print("Emotion tracking reset.")
         elif key == ord('q'):
             break
     

@@ -77,7 +77,7 @@ class EmotionLogger:
         summary += f"Total Faces Detected: {self.stats['faces_detected']}"
         return summary
 
-
+#class performance monitor
 class PerformanceMonitor:
     """Monitors performance metrics."""
 

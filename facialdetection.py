@@ -6,7 +6,7 @@ from pathlib import Path
 from collections import Counter, deque
 import json
 import csv
-
+#face
 FACE_CASCADE = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 EYE_CASCADE = cv2.data.haarcascades + 'haarcascade_eye.xml'
 SMILE_CASCADE = cv2.data.haarcascades + 'haarcascade_smile.xml'
